@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "First Commit"
+description = "A verified campus chat app for student communities, built around real-time one-to-one messaging, reviewed student ID verification, searchable people, saved chat history, and demo accounts for testing."
+version = "1.0.0"
+id = "artifacts/first-commit-chat"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24860
+
+[services.development]
+run = "pnpm --filter @workspace/first-commit-chat run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/first-commit-chat", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/first-commit-chat/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24860"
+BASE_PATH = "/"

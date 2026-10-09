@@ -1,0 +1,2 @@
+- [Orval API contracts](orval-api-contracts.md) — keep parameter naming collisions in mind when combining path identifiers with query options.
+- [Clerk SDK wiring](clerk-sdk-wiring.md) — check installed SDK exports before applying Replit’s version-sensitive client helper instructions.

@@ -10,6 +10,16 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: profile
+    description: Student profile and verification
+  - name: people
+    description: Discover campus members
+  - name: conversations
+    description: Private one-to-one conversations and messages
+  - name: activity
+    description: Presence, typing, and live events
+  - name: admin
+    description: Verification review tools
 paths:
   /healthz:
     get:
@@ -24,6 +34,384 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /me:
+    get:
+      operationId: getMe
+      tags: [profile]
+      summary: Get the signed-in student's profile
+      responses:
+        "200":
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    patch:
+      operationId: updateMe
+      tags: [profile]
+      summary: Create or update the signed-in student's profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+  /people:
+    get:
+      operationId: listPeople
+      tags: [people]
+      summary: Search campus members
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Matching members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+  /verification:
+    get:
+      operationId: getVerification
+      tags: [profile]
+      summary: Get the signed-in student's latest verification request
+      responses:
+        "200":
+          description: Verification request or null if not submitted
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/Verification"
+                  - type: "null"
+    post:
+      operationId: submitVerification
+      tags: [profile]
+      summary: Submit student details for manual review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerificationInput"
+      responses:
+        "201":
+          description: Submitted request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Verification"
+  /admin/verifications:
+    get:
+      operationId: listVerificationRequests
+      tags: [admin]
+      summary: List pending student verification requests
+      responses:
+        "200":
+          description: Pending requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Verification"
+        "403":
+          description: Reviewer access required
+  /admin/verifications/{verificationId}:
+    patch:
+      operationId: reviewVerification
+      tags: [admin]
+      summary: Approve or reject a student verification request
+      parameters:
+        - name: verificationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerificationDecision"
+      responses:
+        "200":
+          description: Reviewed request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Verification"
+        "403":
+          description: Reviewer access required
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [conversations]
+      summary: Get conversation and campus activity totals
+      responses:
+        "200":
+          description: Dashboard totals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+  /conversations:
+    get:
+      operationId: listConversations
+      tags: [conversations]
+      summary: List signed-in student's conversations
+      responses:
+        "200":
+          description: Conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Conversation"
+    post:
+      operationId: startConversation
+      tags: [conversations]
+      summary: Start or open a private conversation with a campus member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationInput"
+      responses:
+        "200":
+          description: Existing conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+        "201":
+          description: New conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+  /messages:
+    get:
+      operationId: listMessages
+      tags: [conversations]
+      summary: Read messages in a private conversation
+      parameters:
+        - name: conversationId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+        "404":
+          description: Conversation not found
+  /conversations/{conversationId}/messages:
+    post:
+      operationId: sendMessage
+      tags: [conversations]
+      summary: Send a message to a conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageInput"
+      responses:
+        "201":
+          description: Sent message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+  /conversations/{conversationId}/read:
+    patch:
+      operationId: markConversationRead
+      tags: [conversations]
+      summary: Mark incoming messages as read
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated read receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadReceipt"
+  /conversations/{conversationId}/typing:
+    post:
+      operationId: setTypingStatus
+      tags: [activity]
+      summary: Update typing status in a conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TypingInput"
+      responses:
+        "200":
+          description: Updated typing status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TypingStatus"
+  /messages/{messageId}:
+    patch:
+      operationId: editMessage
+      tags: [conversations]
+      summary: Edit a message sent by the signed-in student
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageUpdate"
+      responses:
+        "200":
+          description: Updated message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+    delete:
+      operationId: deleteMessage
+      tags: [conversations]
+      summary: Remove a message sent by the signed-in student
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Message removed
+  /messages/{messageId}/reactions:
+    post:
+      operationId: addReaction
+      tags: [conversations]
+      summary: React to a message
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReactionInput"
+      responses:
+        "200":
+          description: Saved reaction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+  /messages/{messageId}/reactions/{emoji}:
+    delete:
+      operationId: removeReaction
+      tags: [conversations]
+      summary: Remove the signed-in student's reaction from a message
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: emoji
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Reaction removed
+  /presence:
+    post:
+      operationId: updatePresence
+      tags: [activity]
+      summary: Refresh online presence
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+  /events:
+    get:
+      operationId: streamEvents
+      tags: [activity]
+      summary: Subscribe to private live conversation and presence events
+      description: Cookie-authenticated Server-Sent Events stream. The web app consumes this endpoint with EventSource for live delivery and reconnects after interruptions.
+      responses:
+        "200":
+          description: Event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          description: Sign in required
 components:
   schemas:
     HealthStatus:
@@ -31,6 +419,151 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
-
+      required: [status]
+    User:
+      type: object
+      required: [id, displayName, username, avatarUrl, university, program, year, bio, verificationStatus, isOnline, lastActiveAt, isDemo, createdAt]
+      properties:
+        id: { type: string }
+        displayName: { type: string }
+        username: { type: string }
+        email: { type: ["string", "null"] }
+        avatarUrl: { type: ["string", "null"] }
+        university: { type: ["string", "null"] }
+        program: { type: ["string", "null"] }
+        year: { type: ["integer", "null"] }
+        bio: { type: ["string", "null"] }
+        verificationStatus: { type: string, enum: [unverified, pending, verified, rejected] }
+        isOnline: { type: boolean }
+        lastActiveAt: { type: ["string", "null"], format: date-time }
+        isDemo: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    ProfileUpdate:
+      type: object
+      required: [displayName, username, university, program, year, bio]
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 80 }
+        username: { type: string, minLength: 3, maxLength: 24 }
+        university: { type: string, minLength: 2, maxLength: 120 }
+        program: { type: string, minLength: 2, maxLength: 100 }
+        year: { type: integer, minimum: 1, maximum: 8 }
+        bio: { type: string, maxLength: 240 }
+    Verification:
+      type: object
+      required: [id, userId, university, campusEmail, studentIdLastFour, status, submittedAt, reviewedAt, reviewNote, applicantName]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        university: { type: string }
+        campusEmail: { type: string }
+        studentIdLastFour: { type: string }
+        status: { type: string, enum: [pending, verified, rejected] }
+        submittedAt: { type: string, format: date-time }
+        reviewedAt: { type: ["string", "null"], format: date-time }
+        reviewNote: { type: ["string", "null"] }
+        applicantName: { type: string }
+    VerificationInput:
+      type: object
+      required: [university, campusEmail, studentId]
+      properties:
+        university: { type: string, minLength: 2, maxLength: 120 }
+        campusEmail: { type: string, format: email, maxLength: 254 }
+        studentId: { type: string, minLength: 3, maxLength: 64 }
+    VerificationDecision:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [verified, rejected] }
+        reviewNote: { type: string, maxLength: 300 }
+    Dashboard:
+      type: object
+      required: [conversationCount, unreadCount, verifiedCampusMembers, onlineMembers, recentActivity]
+      properties:
+        conversationCount: { type: integer }
+        unreadCount: { type: integer }
+        verifiedCampusMembers: { type: integer }
+        onlineMembers: { type: integer }
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/Conversation"
+    ConversationInput:
+      type: object
+      required: [peerUserId]
+      properties:
+        peerUserId: { type: string, minLength: 1, maxLength: 128 }
+    Conversation:
+      type: object
+      required: [id, peer, lastMessage, unreadCount, updatedAt, isDemo]
+      properties:
+        id: { type: string }
+        peer:
+          $ref: "#/components/schemas/User"
+        lastMessage:
+          oneOf:
+            - $ref: "#/components/schemas/Message"
+            - type: "null"
+        unreadCount: { type: integer }
+        updatedAt: { type: string, format: date-time }
+        isDemo: { type: boolean }
+    Message:
+      type: object
+      required: [id, conversationId, senderId, senderName, content, createdAt, editedAt, isDeleted, isRead, reactions, replyToId]
+      properties:
+        id: { type: string }
+        conversationId: { type: string }
+        senderId: { type: string }
+        senderName: { type: string }
+        content: { type: string }
+        createdAt: { type: string, format: date-time }
+        editedAt: { type: ["string", "null"], format: date-time }
+        isDeleted: { type: boolean }
+        isRead: { type: boolean }
+        replyToId: { type: ["string", "null"] }
+        reactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Reaction"
+    MessageInput:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1, maxLength: 4000 }
+        replyToId: { type: ["string", "null"] }
+    MessageUpdate:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1, maxLength: 4000 }
+    Reaction:
+      type: object
+      required: [emoji, count, reactedByMe]
+      properties:
+        emoji: { type: string }
+        count: { type: integer }
+        reactedByMe: { type: boolean }
+    ReactionInput:
+      type: object
+      required: [emoji]
+      properties:
+        emoji: { type: string, minLength: 1, maxLength: 16 }
+    ReadReceipt:
+      type: object
+      required: [conversationId, readAt, updatedMessages]
+      properties:
+        conversationId: { type: string }
+        readAt: { type: string, format: date-time }
+        updatedMessages: { type: integer }
+    TypingInput:
+      type: object
+      required: [isTyping]
+      properties:
+        isTyping: { type: boolean }
+    TypingStatus:
+      type: object
+      required: [conversationId, userId, isTyping, updatedAt]
+      properties:
+        conversationId: { type: string }
+        userId: { type: string }
+        isTyping: { type: boolean }
+        updatedAt: { type: string, format: date-time }
